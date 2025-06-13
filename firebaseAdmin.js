@@ -1,7 +1,7 @@
 require('dotenv').config();
 const admin = require("firebase-admin");
 
-// ✅ Read JSON string from env and parse it
+// Parse escaped JSON string from environment
 const serviceAccount = JSON.parse(process.env.SERVICE_ACCOUNT_KEY);
 
 admin.initializeApp({
