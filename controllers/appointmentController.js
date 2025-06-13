@@ -101,29 +101,28 @@ const getAppointmentsByStudent = async (req, res) => {
 
 
 // Get Appointments by Teacher Email
+// Get Appointments by Teacher Email
 const getAppointmentsByTeacher = async (req, res) => {
   try {
-    const teacherEmail = req.params.email;  // get from route params
+    const teacherEmail = req.params.email;
     if (!teacherEmail) {
       return res.status(400).json({ message: "Teacher email is required" });
     }
 
-    // Using Admin SDK query
     const snapshot = await db.collection("appointments")
       .where("teacherEmail", "==", teacherEmail)
       .get();
 
-    if (snapshot.empty) {
-      return res.status(404).json({ message: "No appointments found" });
-    }
-
     const appointments = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-    res.status(200).json(appointments);
+
+    // Always return an array, even if empty
+    return res.status(200).json(appointments);
   } catch (err) {
     console.error("Error fetching teacher appointments:", err);
-    res.status(500).json({ message: "Failed to fetch teacher appointments" });
+    return res.status(500).json({ message: "Failed to fetch teacher appointments" });
   }
 };
+
 
 
 
