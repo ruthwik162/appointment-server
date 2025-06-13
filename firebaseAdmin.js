@@ -1,8 +1,8 @@
 require('dotenv').config();
 const admin = require("firebase-admin");
 
-// ✅ Only this is needed
-const serviceAccount = require(process.env.SERVICE_ACCOUNT_PATH);
+// ✅ Read JSON string from env and parse it
+const serviceAccount = JSON.parse(process.env.SERVICE_ACCOUNT_KEY);
 
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
