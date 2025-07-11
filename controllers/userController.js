@@ -8,13 +8,33 @@ const multer = require("multer");
 // Multer setup for file upload in memory
 const storage = multer.memoryStorage();
 const upload = multer({ storage });
+const nodemailer = require("nodemailer");
+
+// Setup nodemailer
+const transporter = nodemailer.createTransport({
+  service: "gmail",
+  auth: {
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS,
+  },
+});
+
+const sendWelcomeEmail = async (toEmail, username = "User") => {
+  const mailOptions = {
+    from: `"Hostel Admin" <${process.env.EMAIL_USER}>`,
+    to: toEmail,
+    subject: "Welcome to the Platform!",
+    text: `Hi ${username},\n\nYour account has been successfully registered.\n\nThank you for joining us!\n\n Start Our Service to make easy to connect to department faculty`,
+  };
+
+  await transporter.sendMail(mailOptions);
+};
 
 const registerUser = [
   upload.single("profileImage"), // Only for single-user uploads with image
   async (req, res) => {
     try {
       const body = req.body;
-
       let users = [];
 
       // Accept `user`, `users`, or raw object
@@ -60,6 +80,7 @@ const registerUser = [
         // Hash the password
         const hashedPassword = await bcrypt.hash(password, 10);
 
+        // Upload profile image if exists
         let profileImageUrl = null;
         if (req.file && users.length === 1) {
           const fileName = `profileImages/${Date.now()}_${req.file.originalname}`;
@@ -95,6 +116,13 @@ const registerUser = [
 
         const newUserRef = db.collection("users").doc();
         await newUserRef.set(userData);
+
+        // Send welcome email
+        try {
+          await sendWelcomeEmail(email, rest.username || email.split("@")[0]);
+        } catch (emailErr) {
+          console.warn(`Failed to send email to ${email}:`, emailErr.message);
+        }
 
         results.push({
           email,
