@@ -1,5 +1,15 @@
 const { db } = require("../firebaseAdmin");
+const nodemailer = require("nodemailer");
 const { collection, query, where, getDocs } = require("firebase/firestore");
+
+
+const transporter = nodemailer.createTransport({
+  service: "gmail",
+  auth: {
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS,
+  },
+});
 
 // Book Appointment
 const bookAppointment = async (req, res) => {
@@ -114,7 +124,6 @@ const getAppointmentsByTeacher = async (req, res) => {
       .get();
 
     const appointments = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-
     // Always return an array, even if empty
     return res.status(200).json(appointments);
   } catch (err) {
@@ -154,31 +163,51 @@ const getAllAppointmentsBetween = async (req, res) => {
   }
 };
 
+const sendStatusUpdateEmail = async (to, status) => {
+  const mailOptions = {
+    from: `"Hostel Admin" <${process.env.EMAIL_USER}>`,
+    to,
+    subject: "Appointment Status Update",
+    html: `
+      <p>Dear Student,</p>
+      <p>Your appointment status has been updated to: <strong>${status}</strong>.</p>
+      <p>Thank you,<br/>Mallareddy University Admin</p>
+    `,
+  };
+  await transporter.sendMail(mailOptions);
+};
 
-// Update Appointment Status
+
 const updateAppointmentStatus = async (req, res) => {
   try {
     const { id } = req.params;
     const { status } = req.body;
+
     if (!status) {
       return res.status(400).json({ message: "Status is required" });
     }
+
     const docRef = db.collection("appointments").doc(id);
-    // Update status
     await docRef.update({ status });
 
-    // Fetch updated doc to get student username
     const updatedDoc = await docRef.get();
     if (!updatedDoc.exists) {
       return res.status(404).json({ message: "Appointment not found" });
     }
+
     const appointmentData = updatedDoc.data();
-    const studentUsername = appointmentData.studentUsername || null;
-    const teacherEmail = appointmentData.teacherEmail || null;
-    res.status(200).json({ 
-      message: "Appointment status updated", 
-      studentUsername: studentUsername ,
-      teacherEmail: teacherEmail,
+    const { studentEmail, studentUsername, teacherEmail } = appointmentData;
+
+    // Send email only if studentEmail is available
+    if (studentEmail) {
+      await sendStatusUpdateEmail(studentEmail, status);
+    }
+
+    return res.status(200).json({
+      message: "Appointment status updated and email sent",
+      studentUsername,
+      teacherEmail,
+      studentEmail,
     });
   } catch (err) {
     console.error("Error updating appointment status:", err);
